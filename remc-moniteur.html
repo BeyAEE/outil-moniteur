@@ -1068,7 +1068,17 @@ function annotatePreset(){
   document.getElementById("editorTitle").textContent="📐 "+pvPreset.title;
   objects=[{type:"bgimage",src:pvPreset.src,x:0,y:0,scale:1,_pid:pvPreset.id}];
   history=[];panX=0;panY=0;zoom=1;
-  show("editor");setTimeout(initCanvas,80);
+  show("editor");setTimeout(initCanvas,80);setTimeout(centerPreset,150);
+}
+function centerPreset(){
+  const bgObj=objects.find(o=>o.type==="bgimage");
+  if(!bgObj||!bgObj._img)return;
+  const img=bgObj._img,cw=canvas.width,ch=canvas.height;
+  const iw=img.naturalWidth,ih=img.naturalHeight;
+  const zoomH=ch/ih*0.92,zoomW=cw/iw*0.92;
+  zoom=Math.min(zoomW,zoomH);
+  panX=(cw-iw*zoom)/2;panY=(ch-ih*zoom)/2;
+  drawAll();
 }
 function openEditor(letter){
   currentSub=currentComp.subs.find(s=>s.l===letter);isPreset=false;currentPresetId=null;
