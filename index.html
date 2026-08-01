@@ -545,6 +545,7 @@ let isDown=false,startX=0,startY=0,lastX=0,lastY=0;
 let movingObj=null,moveOffX=0,moveOffY=0,selectedObj=null;
 let p0=0,z0=1,px0=0,py0=0,pmx=0,pmy=0;
 let canvas,ctx,_psx=0,_psy=0,_pi=false;
+let DPR=1,cssW=0,cssH=0;
 
 // ── counter animation ──
 function animCount(el,target,dur){
@@ -1077,7 +1078,7 @@ function annotatePreset(){
 function centerPreset(){
   const bgObj=objects.find(o=>o.type==="bgimage");
   if(!bgObj||!bgObj._img)return;
-  const img=bgObj._img,cw=canvas.width,ch=canvas.height;
+  const img=bgObj._img,cw=cssW,ch=cssH;
   const iw=img.naturalWidth,ih=img.naturalHeight;
   const zoomH=ch/ih*0.92,zoomW=cw/iw*0.92;
   zoom=Math.min(zoomW,zoomH);
@@ -1223,7 +1224,11 @@ function resetExam(){
 // ── Canvas ──
 function initCanvas(){
   canvas=document.getElementById("schemaCanvas");ctx=canvas.getContext("2d");
-  canvas.width=canvas.parentElement.clientWidth;canvas.height=canvas.parentElement.clientHeight;
+  DPR=Math.min(window.devicePixelRatio||1,3);
+  cssW=canvas.parentElement.clientWidth;cssH=canvas.parentElement.clientHeight;
+  canvas.width=Math.round(cssW*DPR);canvas.height=Math.round(cssH*DPR);
+  canvas.style.width=cssW+"px";canvas.style.height=cssH+"px";
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
   buildColorRow();buildVehGrid();
   ["touchstart","touchmove","touchend","touchcancel"].forEach(e=>{
     canvas.removeEventListener(e,H[e]);canvas.addEventListener(e,H[e],{passive:false});
@@ -1235,16 +1240,16 @@ function s2w(sx,sy){return{x:(sx-panX)/zoom,y:(sy-panY)/zoom};}
 
 function drawAll(){
   if(!ctx)return;
-  ctx.save();ctx.setTransform(1,0,0,1,0,0);
-  ctx.fillStyle="#1c1c1c";ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.save();ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle="#1c1c1c";ctx.fillRect(0,0,cssW,cssH);
   if(!objects.some(o=>o.type==="bgimage")){
     ctx.strokeStyle="rgba(255,255,255,0.028)";ctx.lineWidth=1;
     const g=50*zoom,ox=panX%g,oy=panY%g;
-    for(let x=ox;x<canvas.width;x+=g){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
-    for(let y=oy;y<canvas.height;y+=g){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+    for(let x=ox;x<cssW;x+=g){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cssH);ctx.stroke();}
+    for(let y=oy;y<cssH;y+=g){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cssW,y);ctx.stroke();}
   }
   ctx.restore();
-  ctx.save();ctx.translate(panX,panY);ctx.scale(zoom,zoom);
+  ctx.save();ctx.setTransform(DPR,0,0,DPR,0,0);ctx.translate(panX,panY);ctx.scale(zoom,zoom);
   objects.forEach(drawObj);
   if(selectedObj){
     ctx.save();ctx.strokeStyle="rgba(100,180,255,.9)";ctx.lineWidth=2/zoom;ctx.setLineDash([5/zoom,3/zoom]);
@@ -1435,7 +1440,7 @@ function closeVPop(){document.getElementById("vpop").classList.remove("open");}
 function placeVeh(id){
   closeVPop();const v=VEHICLES.find(x=>x.id===id);if(!v)return;pushH();
   const lbl=v.vtype==="car"?v.label.slice(-1):undefined;
-  objects.push({...v,type:"vehicle",x:(canvas.width/2-panX)/zoom,y:(canvas.height/2-panY)/zoom,angle:0,scale:1,label:lbl});
+  objects.push({...v,type:"vehicle",x:(cssW/2-panX)/zoom,y:(cssH/2-panY)/zoom,angle:0,scale:1,label:lbl});
   drawAll();setTool("move");
 }
 function openOv(id){document.getElementById(id).classList.add("open");}
@@ -1479,10 +1484,11 @@ async function exportPNG(){
   try{
     // Render to offscreen canvas
     const oc=document.createElement("canvas");
-    oc.width=canvas.width*2; oc.height=canvas.height*2; // 2x for retina
+    oc.width=cssW*3; oc.height=cssH*3; // 3x pour l'export
     const ox=oc.getContext("2d");
-    ox.scale(2,2);
-    ox.fillStyle="#1c1c1c";ox.fillRect(0,0,canvas.width,canvas.height);
+    ox.imageSmoothingEnabled=true;ox.imageSmoothingQuality="high";
+    ox.scale(3,3);
+    ox.fillStyle="#1c1c1c";ox.fillRect(0,0,cssW,cssH);
     ox.save();ox.translate(panX,panY);ox.scale(zoom,zoom);
     // Draw all bgimage objects synchronously by reusing cached _img
     for(const o of objects){
